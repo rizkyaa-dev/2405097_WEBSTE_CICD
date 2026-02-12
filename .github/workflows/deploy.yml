@@ -16,11 +16,25 @@ jobs:
     - name: Setup SSH
       run: |
         mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+        
+        # Cek apakah secret ada (untuk debugging jika masih error)
+        if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+          echo "Error: Secret SSH_PRIVATE_KEY kosong atau belum diset!"
+          exit 1
+        fi
+        
+        if [ -z "${{ secrets.SERVER_IP }}" ]; then
+          echo "Error: Secret SERVER_IP kosong atau belum diset!"
+          exit 1
+        fi
+
+        # Gunakan printf agar format new-line pada key tidak rusak
+        printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
+        
+        # Scan key server
         ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
     - name: Deploy to Server
       run: |
-        rsync -avz --delete ./ \
-        ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}
+        rsync -avz --delete ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}
